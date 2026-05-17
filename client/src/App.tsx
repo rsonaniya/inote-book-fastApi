@@ -1,4 +1,3 @@
-import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import {
   ThemeProvider,
@@ -6,7 +5,6 @@ import {
   CssBaseline,
   Box,
   Typography,
-  Button,
 } from "@mui/material";
 
 // Import the login page we just created
