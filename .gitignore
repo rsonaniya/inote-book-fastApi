@@ -3,8 +3,8 @@ api/.venv/
 api/venv/
 api/env/
 api/ENV/
-api/__pycache__/
-api/*.py[cod]
+__pycache__/    
+*.py[cod]       
 api/inotebook-db.db
 
 # === FRONTEND (React) ===
