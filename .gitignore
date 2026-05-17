@@ -1,0 +1,23 @@
+# === BACKEND (Python) ===
+api/.venv/
+api/venv/
+api/env/
+api/ENV/
+api/__pycache__/
+api/*.py[cod]
+api/inotebook-db.db
+
+# === FRONTEND (React) ===
+frontend/node_modules/
+frontend/build/
+frontend/.pnp
+frontend/.pnp.js
+
+# === SYSTEM & ENV VARIABLES ===
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.DS_Store
+Thumbs.db
