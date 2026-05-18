@@ -1,23 +1,41 @@
 import os
-from fastapi_mail import (
-    ConnectionConfig,
-    FastMail,
-    MessageSchema,
-    MessageType,
-)
+import httpx
+from fastapi import HTTPException
+from dotenv import load_dotenv
 
-conf = ConnectionConfig(
-    MAIL_USERNAME="rajat.dev0305@gmail.com",
-    MAIL_PASSWORD="ilnd lbvk zwhz dgdp",
-    MAIL_FROM="Focus-app@gmail.com",
-    MAIL_PORT=587,
-    MAIL_SERVER="smtp.gmail.com",
-    MAIL_FROM_NAME="Focus Team",
-    MAIL_STARTTLS=True,
-    MAIL_SSL_TLS=False,
-    USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True,
-)
+load_dotenv()
+
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+
+
+async def send_brevo_email(subject: str, email_to: str, html_content: str):
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+    }
+    payload = {
+        "sender": {"name": "Focus Team", "email": "rajatsonaniya28@gmail.com"},
+        "to": [{"email": email_to}],
+        "subject": subject,
+        "htmlContent": html_content,
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(BREVO_API_URL, headers=headers, json=payload)
+            if response.status_code not in [200, 201, 202]:
+                print(f"Brevo error response {response.text}")
+                raise HTTPException(
+                    status_code=500, detail=f"Email delivery failed: {response.text}"
+                )
+            print(f"email successfully sent to route {email_to}")
+        except httpx.HTTPError as exc:
+            print(f"not work error while connecting to brevo: {exc}")
+            raise HTTPException(
+                status_code=500, detail="Internal network error during email broadcast."
+            )
 
 
 async def send_welcome_email(email_to: str, fullname: str):
@@ -35,18 +53,10 @@ async def send_welcome_email(email_to: str, fullname: str):
         </body>
     </html>
     """
-    message = MessageSchema(
-        subject="Welcome to Focus! ✨",
-        recipients=[email_to],
-        body=html_content,
-        subtype=MessageType.html,
-    )
-    fm = FastMail(conf)
-    await fm.send_message(message)
+    await send_brevo_email("Welcome to Focus! ✨", email_to, html_content)
 
 
 async def send_signup_otp_email(otp_code: str, email_to: str, fullname: str):
-    """Asynchronously transmits the 6-digit verification security token."""
     html_content = f"""
     <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -61,18 +71,9 @@ async def send_signup_otp_email(otp_code: str, email_to: str, fullname: str):
                     </span>
                 </div>
                 
-                <p style="font-size: 13px; color: #666; text-align: center;">This security code is strictly valid for <strong>5 minutes</strong>.</p>
+                <p style="font-size: 13px; color: #666; text-align: center;">This security code is strictly valid for <strong>1 minute</strong>.</p>
             </div>
         </body>
     </html>
     """
-
-    message = MessageSchema(
-        subject="Focus Verification Code 🔐",
-        recipients=[email_to],
-        body=html_content,
-        subtype=MessageType.html,
-    )
-
-    fm = FastMail(conf)
-    await fm.send_message(message)
+    await send_brevo_email("Focus Verification Code 🔐", email_to, html_content)

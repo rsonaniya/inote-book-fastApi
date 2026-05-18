@@ -3,6 +3,7 @@ api/.venv/
 api/venv/
 api/env/
 api/ENV/
+api/.env/
 __pycache__/    
 *.py[cod]       
 api/inotebook-db.db

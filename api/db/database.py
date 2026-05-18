@@ -2,17 +2,17 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
 
-DB_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://neondb_owner:npg_5lqVLtCS6asB@ep-billowing-heart-aqwwn6f2.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require",
-)
+load_dotenv()
 
-is_sqlite = DB_URL.startswith("sqlite")
-engine = create_engine(
-    DB_URL, connect_args={"check_same_thread": False} if is_sqlite else {}
-)
-
+DB_URL = os.environ.get("DATABASE_URL", "sqlite:///./test.db")
+if DB_URL and DB_URL.startswith("postgres://"):
+    DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
+if DB_URL.startswith("sqlite"):
+    engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
