@@ -14,7 +14,7 @@ router = APIRouter(tags=["Authentication"])
 def get_token(
     request: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
-    user = db.query(DbUser).filter(DbUser.username == request.username).first()
+    user = db.query(DbUser).filter(DbUser.email == request.username).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials"
@@ -23,10 +23,16 @@ def get_token(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials"
         )
-    access_token = oauth2.create_access_token(data={"sub": user.username})
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your Account is not verified, Please verify it first",
+        )
+    access_token = oauth2.create_access_token(data={"sub": user.email})
     return {
         "access_token": access_token,
         "token_type": "Bearer",
         "user_id": user.id,
-        "username": user.username,
+        "email": user.email,
+        "fullname": user.fullname,
     }

@@ -91,7 +91,7 @@ export default function Dashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get("/notes");
+      const response = await api.get("/notes/");
       setTodos(response.data);
     } catch (err: any) {
       console.error("Failed to fetch tasks:", err);
@@ -228,7 +228,7 @@ export default function Dashboard() {
 
     try {
       // Assuming FastAPI expects a payload matching the Todo schema
-      const response = await api.post("/notes", {
+      const response = await api.post("/notes/", {
         title: addTitle,
         content: addContent,
       });
@@ -299,7 +299,7 @@ export default function Dashboard() {
               Your Notes
             </Typography>
             <Typography variant="body1" sx={{ color: "#4a4453" }}>
-              Welcome back, {user?.username || "User"}. Here is what you need to
+              Welcome back, {user?.fullname || "User"}. Here is what you need to
               focus on.
             </Typography>
           </Box>
@@ -346,112 +346,122 @@ export default function Dashboard() {
         )}
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {todos.map((todo) => (
-            <Paper
-              key={todo.id}
-              elevation={0}
-              sx={{
-                p: 2,
-                borderRadius: "16px",
-                border: "1px solid #ccc3d5",
-                bgcolor: "#ffffff",
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 2,
-                transition: "all 0.2s",
-                "&:hover": {
-                  boxShadow: "0px 4px 12px rgba(103, 58, 183, 0.08)",
-                  "& .action-buttons": { opacity: 1 },
-                },
-              }}
-            >
-              <Box sx={{ pt: 0.5 }}>
-                <Checkbox
-                  checked={todo.completed}
-                  onChange={() => handleToggleComplete(todo.id, todo.completed)}
-                  icon={
-                    <RadioButtonUncheckedIcon
-                      sx={{ color: "#7b7484", fontSize: 28 }}
-                    />
-                  }
-                  checkedIcon={
-                    <CheckCircleIcon sx={{ color: "#673ab7", fontSize: 28 }} />
-                  }
-                  sx={{ p: 0 }}
-                />
-              </Box>
-
-              <Box sx={{ flexGrow: 1 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      color: todo.completed ? "#7b7484" : "#1c1b1f",
-                      textDecoration: todo.completed ? "line-through" : "none",
-                      fontWeight: 500,
-                      mb: 0.5,
-                      fontSize: "18px",
-                    }}
-                  >
-                    {todo.title}
-                  </Typography>
-
-                  <Box
-                    className="action-buttons"
-                    sx={{
-                      display: "flex",
-                      gap: 0.5,
-                      opacity: 0,
-                      transition: "opacity 0.2s",
-                    }}
-                  >
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenModal(todo)}
-                      sx={{
-                        color: "#4a4453",
-                        "&:hover": { bgcolor: "#f1ecf2" },
-                      }}
-                    >
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(todo.id)}
-                      sx={{
-                        color: "#4a4453",
-                        "&:hover": { bgcolor: "#ffdad6", color: "#ba1a1a" },
-                      }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
+          {todos &&
+            todos.length > 0 &&
+            todos.map((todo) => (
+              <Paper
+                key={todo.id}
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: "16px",
+                  border: "1px solid #ccc3d5",
+                  bgcolor: "#ffffff",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 2,
+                  transition: "all 0.2s",
+                  "&:hover": {
+                    boxShadow: "0px 4px 12px rgba(103, 58, 183, 0.08)",
+                    "& .action-buttons": { opacity: 1 },
+                  },
+                }}
+              >
+                <Box sx={{ pt: 0.5 }}>
+                  <Checkbox
+                    checked={todo.completed}
+                    onChange={() =>
+                      handleToggleComplete(todo.id, todo.completed)
+                    }
+                    icon={
+                      <RadioButtonUncheckedIcon
+                        sx={{ color: "#7b7484", fontSize: 28 }}
+                      />
+                    }
+                    checkedIcon={
+                      <CheckCircleIcon
+                        sx={{ color: "#673ab7", fontSize: 28 }}
+                      />
+                    }
+                    sx={{ p: 0 }}
+                  />
                 </Box>
 
-                {todo.content && (
-                  <Typography
-                    variant="body2"
+                <Box sx={{ flexGrow: 1 }}>
+                  <Box
                     sx={{
-                      color: todo.completed ? "#ccc3d5" : "#4a4453",
-                      textDecoration: todo.completed ? "line-through" : "none",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
                     }}
                   >
-                    {todo.content}
-                  </Typography>
-                )}
-              </Box>
-            </Paper>
-          ))}
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        color: todo.completed ? "#7b7484" : "#1c1b1f",
+                        textDecoration: todo.completed
+                          ? "line-through"
+                          : "none",
+                        fontWeight: 500,
+                        mb: 0.5,
+                        fontSize: "18px",
+                      }}
+                    >
+                      {todo.title}
+                    </Typography>
+
+                    <Box
+                      className="action-buttons"
+                      sx={{
+                        display: "flex",
+                        gap: 0.5,
+                        opacity: 0,
+                        transition: "opacity 0.2s",
+                      }}
+                    >
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenModal(todo)}
+                        sx={{
+                          color: "#4a4453",
+                          "&:hover": { bgcolor: "#f1ecf2" },
+                        }}
+                      >
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDelete(todo.id)}
+                        sx={{
+                          color: "#4a4453",
+                          "&:hover": { bgcolor: "#ffdad6", color: "#ba1a1a" },
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Box>
+
+                  {todo.content && (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: todo.completed ? "#ccc3d5" : "#4a4453",
+                        textDecoration: todo.completed
+                          ? "line-through"
+                          : "none",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {todo.content}
+                    </Typography>
+                  )}
+                </Box>
+              </Paper>
+            ))}
         </Box>
       </Container>
 

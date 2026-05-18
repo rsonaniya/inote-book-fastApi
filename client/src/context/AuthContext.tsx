@@ -8,8 +8,9 @@ import {
 
 // 1. Define the shape of your User and Context
 interface User {
-  id: string;
-  username: string;
+  user_id: number;
+  email: string;
+  fullname: string;
 }
 
 interface AuthContextType {

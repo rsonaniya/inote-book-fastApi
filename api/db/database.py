@@ -7,6 +7,7 @@ DB_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql://neondb_owner:npg_5lqVLtCS6asB@ep-billowing-heart-aqwwn6f2.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require",
 )
+
 is_sqlite = DB_URL.startswith("sqlite")
 engine = create_engine(
     DB_URL, connect_args={"check_same_thread": False} if is_sqlite else {}

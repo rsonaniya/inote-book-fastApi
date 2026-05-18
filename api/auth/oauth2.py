@@ -30,12 +30,12 @@ def get_current_user(token: str = Depends(auth2_scheme), db: Session = Depends(g
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if username is None:
+        email = payload.get("sub")
+        if email is None:
             raise credential_exception
     except JWTError:
         raise credential_exception
-    user = db_user.get_db_user_by_username(username, db)
+    user = db_user.get_db_user_by_email(email, db)
     if user is None:
         raise credential_exception
     return user

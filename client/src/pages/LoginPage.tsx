@@ -22,7 +22,7 @@ import api from "../axiosInstance";
 import { useAuth } from "../context/AuthContext";
 
 interface IFormInput {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -49,13 +49,14 @@ export default function LoginPage() {
 
   const onSubmit: SubmitHandler<IFormInput> = async (data) => {
     setIsLoading(true);
-    setApiError(null); // Clear any previous errors
+    setApiError(null);
 
     try {
       // 1. Create URLSearchParams to encode the data properly
       const formData = new URLSearchParams();
 
-      formData.append("username", data.username);
+      // 2. Map the form's 'email' strictly to the 'username' key for FastAPI
+      formData.append("username", data.email);
       formData.append("password", data.password);
 
       // 3. Send the request with the specific Content-Type header
@@ -68,17 +69,20 @@ export default function LoginPage() {
       // Extract token from your FastAPI response
       const token = response.data.access_token;
 
-      // If your backend returns user info, grab it. Otherwise, use what we have.
-      const userData = response.data;
+      // Map the newly updated FastAPI response to your AuthContext interface
+      const userData = {
+        user_id: response.data.user_id,
+        email: response.data.email,
+        fullname: response.data.fullname,
+      };
 
-      // Save to context (which saves to localStorage)
+      // Save to context
       login(token, userData);
 
       // Redirect to the dashboard
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Login failed:", error);
-      // Display the error message from FastAPI if available (FastAPI usually uses 'detail' for errors)
       if (error.response && error.response.data && error.response.data.detail) {
         setApiError(error.response.data.detail);
       } else {
@@ -177,32 +181,28 @@ export default function LoginPage() {
             onSubmit={handleSubmit(onSubmit)}
             sx={{ display: "flex", flexDirection: "column", gap: 3 }}
           >
-            {/* Show API error message here if it exists */}
             {apiError && (
               <Alert severity="error" sx={{ borderRadius: "8px" }}>
                 {apiError}
               </Alert>
             )}
 
+            {/* Replaced Username field with Email field */}
             <TextField
-              id="username"
-              label="Username"
-              type="text"
+              id="email"
+              label="Email"
+              type="email"
               variant="standard"
               fullWidth
-              {...register("username", {
-                required: "username is required",
-                minLength: {
-                  value: 8,
-                  message: "username must be at least 8 characters",
-                },
-                maxLength: {
-                  value: 14,
-                  message: "username cannot exceed 14 characters",
+              {...register("email", {
+                required: "Email is required",
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: "Invalid email format",
                 },
               })}
-              error={!!errors.username}
-              helperText={errors.username?.message}
+              error={!!errors.email}
+              helperText={errors.email?.message}
               slotProps={{
                 inputLabel: { sx: { color: "#4a4453", fontSize: "16px" } },
               }}

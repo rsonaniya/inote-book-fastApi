@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create a custom Axios instance
 const api = axios.create({
-  baseURL: "https://inote-book-fastapi.onrender.com", // Replace with your actual API URL
+  baseURL: "/", // Replace with your actual API URL
   headers: {
     "Content-Type": "application/json",
   },
