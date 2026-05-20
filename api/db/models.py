@@ -12,6 +12,8 @@ class DbUser(Base):
     is_verified = Column(Boolean, default=False)
     otp_code = Column(String, nullable=True)
     otp_expires_at = Column(DateTime, nullable=True)
+    profile_pic_url = Column(String, nullable=True)
+    profile_pic_public_id = Column(String, nullable=True)
 
 
 class DbNote(Base):

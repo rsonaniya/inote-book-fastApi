@@ -35,4 +35,6 @@ def get_token(
         "user_id": user.id,
         "email": user.email,
         "fullname": user.fullname,
+        "profile_pic_url": user.profile_pic_url,
+        "profile_pic_public_id": user.profile_pic_public_id,
     }

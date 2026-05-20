@@ -1,6 +1,13 @@
 from random import randint
-
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 from auth.oauth2 import get_current_user
 from db.database import get_db
@@ -8,6 +15,7 @@ from db.db_user import create_db_user, get_db_user, get_db_user_by_email, update
 from schemas import ResendOtpBase, UserBase, UserDisplay, VerifyOtpBase
 from utils.email import send_signup_otp_email, send_welcome_email
 from datetime import timedelta, datetime, timezone
+import cloudinary.uploader
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -22,7 +30,7 @@ def get_otp_expiry(minutes: int = 5) -> datetime:
     return get_utc_now() + timedelta(minutes=minutes)
 
 
-@router.post("/", response_model=UserDisplay)
+@router.post("/")
 def create_user(
     request: UserBase, bg_tasks: BackgroundTasks, db: Session = Depends(get_db)
 ):
@@ -36,7 +44,7 @@ def create_user(
         user.email,
         user.fullname,
     )
-    return user
+    return {"message": "Your Accoout is created successfuly"}
 
 
 @router.post("/verify-otp")
@@ -97,3 +105,36 @@ def get_user(id: int, db=Depends(get_db), current_user=Depends(get_current_user)
         )
 
     return get_db_user(id, db)
+
+
+@router.post("/upload-profile-pic", response_model=UserDisplay)
+def upload_profile(
+    profile_pic: UploadFile = File(...),
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    profile_pic_size = profile_pic.size
+    is_size_correct = profile_pic_size >= 102400 and profile_pic_size <= 5242880
+    if not is_size_correct:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="a valid image file between 100 KB and 5 MB is allowed",
+        )
+    accepted_file_types = ["image/jpeg", "image/png", "image/webp"]
+    if not profile_pic.content_type in accepted_file_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only JPEG, PNG, and WEBP images are allowed",
+        )
+    if current_user.profile_pic_public_id:
+        delete_result = cloudinary.uploader.destroy(current_user.profile_pic_public_id)
+        if delete_result.get("result") not in ["ok", "not found"]:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="failed to upload the image",
+            )
+    result = cloudinary.uploader.upload(profile_pic.file)
+    current_user.profile_pic_url = result.get("secure_url")
+    current_user.profile_pic_public_id = result.get("public_id")
+    updated_user = update_db_user(db, current_user)
+    return updated_user

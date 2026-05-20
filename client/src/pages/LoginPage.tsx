@@ -74,6 +74,8 @@ export default function LoginPage() {
         user_id: response.data.user_id,
         email: response.data.email,
         fullname: response.data.fullname,
+        profile_pic_url: response.data?.profile_pic_url,
+        profile_pic_public_id: response.data.profile_pic_public_id,
       };
 
       // Save to context

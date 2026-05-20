@@ -4,6 +4,8 @@ import {
   useEffect,
   type ReactNode,
   useContext,
+  type SetStateAction,
+  type Dispatch,
 } from "react";
 
 // 1. Define the shape of your User and Context
@@ -11,6 +13,8 @@ interface User {
   user_id: number;
   email: string;
   fullname: string;
+  profile_pic_url: string;
+  profile_pic_public_id: string;
 }
 
 interface AuthContextType {
@@ -18,6 +22,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (token: string, userData: User) => void;
   logout: () => void;
+  setUser: Dispatch<SetStateAction<User | null>>;
 }
 
 // 2. Create the Context
@@ -26,6 +31,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // 3. Create the Provider Component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+
+  console.log("@@@user", user);
 
   // Check if a token exists when the app first loads
   useEffect(() => {
@@ -53,7 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, login, logout }}
+      value={{ user, isAuthenticated: !!user, login, logout, setUser }}
     >
       {children}
     </AuthContext.Provider>

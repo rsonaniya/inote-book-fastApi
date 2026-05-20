@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field, EmailStr
 
 
@@ -11,6 +13,8 @@ class UserDisplay(BaseModel):
     email: str
     id: int
     fullname: str
+    profile_pic_url: Optional[str]
+    profile_pic_public_id: Optional[str]
 
     class Config:
         orm_mode = True

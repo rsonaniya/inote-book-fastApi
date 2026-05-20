@@ -1,6 +1,7 @@
 from genericpath import isfile
 
 from fastapi import FastAPI
+from utils.cloudinary_client import init_cloudinary
 from db import models
 from routers import notes, users
 from auth import authentication
@@ -9,6 +10,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_cloudinary()
+    print("ccloudinary SDK Initialized")
+    yield
+
 
 app = FastAPI()
 

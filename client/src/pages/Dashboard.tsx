@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Container,
@@ -16,6 +16,9 @@ import {
   DialogActions,
   TextField,
   Snackbar,
+  Drawer,
+  Avatar,
+  Divider,
 } from "@mui/material";
 
 // Icons
@@ -26,6 +29,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CloseIcon from "@mui/icons-material/Close";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 
 import api from "../axiosInstance";
 import { useAuth } from "../context/AuthContext";
@@ -39,11 +44,17 @@ export interface ITodo {
 }
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  // Ensure your AuthContext exposes an updateUser function to refresh the user state
+  const { user, logout, setUser } = useAuth();
 
   const [todos, setTodos] = useState<ITodo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // --- Drawer & Profile Upload State ---
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -102,11 +113,9 @@ export default function Dashboard() {
   };
 
   const handleToggleComplete = async (id: number, currentStatus: boolean) => {
-    // 1. Find the specific todo in our current state array
     const todoToUpdate = todos.find((todo) => todo.id === id);
     if (!todoToUpdate) return;
 
-    // 2. Optimistic UI update
     setTodos((prev) =>
       prev.map((todo) =>
         todo.id === id ? { ...todo, completed: !currentStatus } : todo,
@@ -114,7 +123,6 @@ export default function Dashboard() {
     );
 
     try {
-      // 3. Send the full object as required by your FastAPI PUT endpoint
       await api.put(`/notes/${id}`, {
         title: todoToUpdate.title,
         content: todoToUpdate.content,
@@ -122,8 +130,6 @@ export default function Dashboard() {
       });
     } catch (err) {
       console.error("Failed to update task status:", err);
-
-      // Revert the UI state if the backend request fails
       setTodos((prev) =>
         prev.map((todo) =>
           todo.id === id ? { ...todo, completed: currentStatus } : todo,
@@ -143,7 +149,74 @@ export default function Dashboard() {
     }
   };
 
-  // --- Edit Modal Handlers ---
+  // --- Profile Picture Upload Logic ---
+  const handleProfilePicClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Reset the input so the same file can be selected again if needed
+    event.target.value = "";
+
+    // Validation: File Type
+    const acceptedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!acceptedTypes.includes(file.type)) {
+      showSnackbar(
+        "Invalid file type. Please upload a JPEG, PNG, or WEBP.",
+        "error",
+      );
+      return;
+    }
+
+    // Validation: File Size (100KB to 5MB)
+    const minSize = 100 * 1024;
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size < minSize || file.size > maxSize) {
+      showSnackbar("Image size must be between 100KB and 5MB.", "error");
+      return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("profile_pic", file);
+
+    try {
+      const response = await api.post("/user/upload-profile-pic", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Assuming your AuthContext has a way to update the user in state
+      if (setUser) {
+        setUser(response.data);
+        localStorage.setItem("user", JSON.stringify(response.data));
+      }
+      showSnackbar("Profile picture updated successfully!", "success");
+    } catch (err: any) {
+      console.error("Failed to upload image:", err);
+      if (err.response?.data?.detail) {
+        showSnackbar(
+          typeof err.response.data.detail === "string"
+            ? err.response.data.detail
+            : "Upload failed.",
+        );
+      } else {
+        showSnackbar("Failed to upload profile picture. Please try again.");
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // --- Modal Handlers ---
   const handleOpenModal = (todo: ITodo) => {
     setSelectedTodo(todo);
     setEditTitle(todo.title);
@@ -181,8 +254,6 @@ export default function Dashboard() {
       handleCloseModal();
     } catch (err) {
       console.error("Failed to save task edits:", err);
-
-      // Type guard to cast the error safely to an AxiosError
       const axiosError = err as any;
 
       if (
@@ -207,7 +278,6 @@ export default function Dashboard() {
     }
   };
 
-  // --- Add Modal Handlers ---
   const handleOpenAddModal = () => {
     setAddTitle("");
     setAddContent("");
@@ -227,20 +297,16 @@ export default function Dashboard() {
     setIsAdding(true);
 
     try {
-      // Assuming FastAPI expects a payload matching the Todo schema
       const response = await api.post("/notes/", {
         title: addTitle,
         content: addContent,
       });
 
-      // Add the newly created task to the top of the list
       setTodos((prev) => [response.data, ...prev]);
       showSnackbar("Task created!", "success");
       handleCloseAddModal();
     } catch (err) {
       console.error("Failed to create task:", err);
-
-      // Type guard to cast the error safely to an AxiosError
       const axiosError = err as any;
 
       if (
@@ -274,7 +340,17 @@ export default function Dashboard() {
         pb: 10,
       }}
     >
+      {/* Hidden File Input for Avatar Upload */}
+      <input
+        type="file"
+        accept="image/jpeg, image/png, image/webp"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        style={{ display: "none" }}
+      />
+
       <Container maxWidth="md" sx={{ pt: 6 }}>
+        {/* Header Section */}
         <Box
           sx={{
             display: "flex",
@@ -304,24 +380,33 @@ export default function Dashboard() {
             </Typography>
           </Box>
 
-          <Button
-            variant="outlined"
-            onClick={logout}
-            startIcon={<LogoutIcon />}
+          {/* User Avatar Button (Replaces Logout Button) */}
+          <IconButton
+            onClick={() => setIsDrawerOpen(true)}
             sx={{
-              color: "#4a4453",
-              borderColor: "#ccc3d5",
-              borderRadius: "9999px",
-              textTransform: "none",
-              fontWeight: 600,
-              px: 3,
-              "&:hover": { bgcolor: "#f1ecf2", borderColor: "#7b7484" },
+              p: 0.5,
+              border: "2px solid #e6e0ef",
+              "&:hover": { borderColor: "#4f1c9e" },
+              transition: "all 0.2s",
             }}
           >
-            Logout
-          </Button>
+            <Avatar
+              src={user?.profile_pic_url}
+              alt={user?.fullname}
+              sx={{
+                width: 48,
+                height: 48,
+                bgcolor: "#4f1c9e",
+                color: "#ffffff",
+                fontWeight: 600,
+              }}
+            >
+              {user?.fullname?.charAt(0).toUpperCase()}
+            </Avatar>
+          </IconButton>
         </Box>
 
+        {/* --- Main Content (Tasks) --- */}
         {isLoading && (
           <Box sx={{ display: "flex", justifyContent: "center", my: 8 }}>
             <CircularProgress sx={{ color: "#4f1c9e" }} />
@@ -481,7 +566,173 @@ export default function Dashboard() {
         <AddIcon />
       </Fab>
 
+      {/* --- User Profile Drawer --- */}
+      <Drawer
+        anchor="right"
+        open={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: "100%", sm: 360 },
+              bgcolor: "#fdf8fd",
+              fontFamily: '"Hanken Grotesk", sans-serif',
+            },
+          },
+        }}
+      >
+        <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <Box
+            sx={{
+              p: 3,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: 600, color: "#1c1b1f" }}>
+              Profile
+            </Typography>
+            <IconButton
+              onClick={() => setIsDrawerOpen(false)}
+              sx={{ color: "#4a4453" }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <Divider sx={{ borderColor: "#ccc3d5" }} />
+
+          <Box
+            sx={{
+              p: 4,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              flexGrow: 1,
+            }}
+          >
+            {/* Interactive Avatar Area */}
+            <Box
+              sx={{
+                position: "relative",
+                mb: 3,
+                cursor: isUploading ? "default" : "pointer",
+                borderRadius: "50%",
+                overflow: "hidden",
+                width: 120,
+                height: 120,
+                boxShadow: "0px 8px 24px rgba(103, 58, 183, 0.15)",
+                "&:hover .overlay": { opacity: 1 },
+              }}
+              onClick={!isUploading ? handleProfilePicClick : undefined}
+            >
+              {isUploading ? (
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: "#e6e0ef",
+                  }}
+                >
+                  <CircularProgress size={32} sx={{ color: "#4f1c9e" }} />
+                </Box>
+              ) : (
+                <>
+                  <Avatar
+                    src={user?.profile_pic_url}
+                    alt={user?.fullname}
+                    sx={{
+                      width: "100%",
+                      height: "100%",
+                      bgcolor: "#4f1c9e",
+                      color: "#ffffff",
+                      fontSize: "40px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {user?.fullname?.charAt(0).toUpperCase()}
+                  </Avatar>
+
+                  {/* Hover/Placeholder Overlay */}
+                  <Box
+                    className="overlay"
+                    sx={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      bgcolor: "rgba(28, 27, 31, 0.6)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: user?.profile_pic_url ? 0 : 1, // Always show if no picture, otherwise show on hover
+                      transition: "opacity 0.2s ease-in-out",
+                    }}
+                  >
+                    {user?.profile_pic_url ? (
+                      <PhotoCameraIcon
+                        sx={{ color: "#ffffff", fontSize: 32 }}
+                      />
+                    ) : (
+                      <AddPhotoAlternateIcon
+                        sx={{ color: "#ffffff", fontSize: 36 }}
+                      />
+                    )}
+                  </Box>
+                </>
+              )}
+            </Box>
+
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 600,
+                color: "#1c1b1f",
+                mb: 0.5,
+                textAlign: "center",
+              }}
+            >
+              {user?.fullname}
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{ color: "#4a4453", mb: 4, textAlign: "center" }}
+            >
+              {user?.email}
+            </Typography>
+          </Box>
+
+          <Box sx={{ p: 3, bgcolor: "#f7f2f8" }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={() => {
+                setIsDrawerOpen(false);
+                logout();
+              }}
+              startIcon={<LogoutIcon />}
+              sx={{
+                color: "#ba1a1a",
+                borderColor: "#ccc3d5",
+                borderRadius: "9999px",
+                textTransform: "none",
+                fontWeight: 600,
+                py: 1.5,
+                "&:hover": { bgcolor: "#ffdad6", borderColor: "#ba1a1a" },
+              }}
+            >
+              Logout
+            </Button>
+          </Box>
+        </Box>
+      </Drawer>
+
       {/* --- Edit Task Modal --- */}
+      {/* ... (Kept completely identical to your provided code) ... */}
       <Dialog
         open={isModalOpen}
         onClose={handleCloseModal}
@@ -518,7 +769,6 @@ export default function Dashboard() {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-
         <DialogContent sx={{ px: 3, pb: 4 }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 4, mt: 1 }}>
             <Box>
@@ -547,7 +797,6 @@ export default function Dashboard() {
                 }}
               />
             </Box>
-
             <Box>
               <Typography
                 variant="body2"
@@ -578,7 +827,6 @@ export default function Dashboard() {
             </Box>
           </Box>
         </DialogContent>
-
         <DialogActions sx={{ px: 3, py: 2, bgcolor: "#f7f2f8" }}>
           <Button
             onClick={handleCloseModal}
@@ -613,6 +861,7 @@ export default function Dashboard() {
       </Dialog>
 
       {/* --- Add Task Modal --- */}
+      {/* ... (Kept completely identical to your provided code) ... */}
       <Dialog
         open={isAddModalOpen}
         onClose={handleCloseAddModal}
@@ -649,7 +898,6 @@ export default function Dashboard() {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-
         <DialogContent sx={{ px: 3, pb: 4 }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 4, mt: 1 }}>
             <Box>
@@ -679,7 +927,6 @@ export default function Dashboard() {
                 }}
               />
             </Box>
-
             <Box>
               <Typography
                 variant="body2"
@@ -711,7 +958,6 @@ export default function Dashboard() {
             </Box>
           </Box>
         </DialogContent>
-
         <DialogActions sx={{ px: 3, py: 2, bgcolor: "#f7f2f8" }}>
           <Button
             onClick={handleCloseAddModal}
@@ -744,11 +990,13 @@ export default function Dashboard() {
           </Button>
         </DialogActions>
       </Dialog>
+
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{ zIndex: 2000 }}
       >
         <Alert
           onClose={handleCloseSnackbar}
